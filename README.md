@@ -1,1 +1,2 @@
-# Test Deployment
+# Auroville Network
+Community platform for Auroville
