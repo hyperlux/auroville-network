@@ -16,7 +16,7 @@ export default function Forums() {
   } = useForumStore();
 
   React.useEffect(() => {
-    fetchPosts();
+    fetchPosts(1);
   }, []);
 
   const filteredPosts = selectedCategory === 'All' 
