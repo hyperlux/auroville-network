@@ -1,16 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface Comment {
-  id: string;
-  userId: string;
-  text: string;
-  createdAt: string;
-  user?: {
-    name: string;
-    avatar?: string;
-  };
-}
-
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -97,27 +86,16 @@ export const useCalendar = (): CalendarState => {
     }
   }, []);
 
-  const addComment = useCallback(async (eventId: string, commentData: { userId: string; text: string }) => {
+  const addComment = useCallback(async (eventId: string, comment: { userId: string; text: string }) => {
     try {
-      const response = await fetch(`/api/events/${eventId}/comments`, {
+      await fetch(`/api/events/${eventId}/comments`, {
         method: 'POST',
-        body: JSON.stringify(commentData)
+        body: JSON.stringify(comment)
       });
-      const newComment: Comment = {
-        id: Date.now().toString(), // Temporary ID until server responds
-        userId: commentData.userId,
-        text: commentData.text,
-        createdAt: new Date().toISOString(),
-        user: { name: 'User' } // Temporary user info until server responds
-      };
-      
       setEvents(prevEvents =>
         prevEvents.map(event =>
           event.id === eventId
-            ? {
-                ...event,
-                comments: [...(event.comments || []), newComment]
-              }
+            ? { ...event, comments: [...(event.comments || []), comment] }
             : event
         )
       );
