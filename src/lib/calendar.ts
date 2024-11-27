@@ -24,61 +24,10 @@ export interface CalendarEvent {
   category: string;
   attendees: number;
   maxSpots: number;
+  image?: string;
+  isJoined?: boolean;
+  comments?: any[];
 }
-
-// Mock data for development
-const mockEvents: CalendarEvent[] = [
-  {
-    id: "1",
-    title: "Community Clean-up Drive",
-    description: "Join us for our monthly community clean-up initiative.",
-    date: format(new Date(), 'yyyy-MM-dd'),
-    time: "09:00",
-    endTime: "12:00",
-    location: "Central Park",
-    category: "Community",
-    image: "https://images.unsplash.com/photo-1558008258-3256797b43f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    attendees: 156,
-    maxSpots: 200,
-    organizerId: "1",
-    organizer: {
-      id: "1",
-      name: "John Doe"
-    },
-    comments: [
-      {
-        id: "1",
-        text: "Looking forward to this event!",
-        createdAt: "2024-03-10T10:00:00Z",
-        author: {
-          id: "2",
-          name: "Jane Smith"
-        }
-      }
-    ],
-    isJoined: false
-  },
-  {
-    id: "2",
-    title: "Local Business Fair",
-    description: "Showcase of local businesses and networking opportunity.",
-    date: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
-    time: "10:00",
-    endTime: "13:00",
-    location: "City Convention Center",
-    category: "Business",
-    image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    attendees: 230,
-    maxSpots: 300,
-    organizerId: "2",
-    organizer: {
-      id: "2",
-      name: "Jane Smith"
-    },
-    comments: [],
-    isJoined: false
-  }
-];
 
 export interface CalendarState {
   events: CalendarEvent[];
