@@ -1,158 +1,120 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import axios from './axios';
-import { format, addDays } from 'date-fns';
-
-export interface EventComment {
-  id: string;
-  text: string;
-  createdAt: string;
-  author: {
-    id: string;
-    name: string;
-  };
-}
+import { useState, useEffect, useCallback } from 'react';
 
 export interface CalendarEvent {
   id: string;
   title: string;
-  description: string;
   date: string;
   time: string;
   endTime: string;
+  description: string;
   location: string;
   category: string;
-  attendees: number;
+  attendees: string[];
   maxSpots: number;
   image?: string;
   isJoined?: boolean;
-  comments?: any[];
+  comments?: Comment[];
+  organizerId: string;
+  organizer: {
+    name: string;
+    avatar?: string;
+  };
 }
 
 export interface CalendarState {
   events: CalendarEvent[];
-  selectedDate: Date;
-  viewMode: 'month' | 'week' | 'day';
-  searchQuery: string;
-  sidebarSearchQuery: string;
-  selectedCategory: string;
-  isLoading: boolean;
-  error: string | null;
-  fetchEvents: (month?: number, year?: number) => Promise<void>;
-  createEvent: (event: Partial<CalendarEvent>) => Promise<void>;
-  updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<void>;
-  deleteEvent: (id: string) => Promise<void>;
-  setSelectedDate: (date: Date) => void;
-  setViewMode: (mode: 'month' | 'week' | 'day') => void;
-  setSearchQuery: (query: string) => void;
-  setSidebarSearchQuery: (query: string) => void;
-  setSelectedCategory: (category: string) => void;
+  loading: boolean;
+  error: Error | null;
+  fetchEvents: () => Promise<void>;
+  joinEvent: (eventId: string, userId: string) => Promise<void>;
+  leaveEvent: (eventId: string, userId: string) => Promise<void>;
+  addComment: (eventId: string, comment: { userId: string; text: string }) => Promise<void>;
 }
 
-export const useCalendarStore = create<CalendarState>((set, get) => ({
-  events: [],
-  selectedDate: new Date(),
-  viewMode: 'month',
-  searchQuery: '',
-  sidebarSearchQuery: '',
-  selectedCategory: '',
-  isLoading: false,
-  error: null,
-  fetchEvents: async (month?: number, year?: number) => {
+export const useCalendar = (): CalendarState => {
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
     try {
-      set({ isLoading: true, error: null });
-      const currentDate = new Date(get().selectedDate);
-      
-      try {
-        const response = await axios.get('/events', {
-          params: {
-            month: month ?? currentDate.getMonth() + 1,
-            year: year ?? currentDate.getFullYear()
-          }
-        });
-        set({ events: response.data, isLoading: false });
-      } catch (apiError) {
-        console.log('Using stored data:', apiError);
-        const storedEvents = get().events;
-        if (month || year) {
-          const filteredEvents = storedEvents.filter(event => {
-            const eventDate = new Date(event.date);
-            return eventDate.getMonth() + 1 === (month ?? currentDate.getMonth() + 1) &&
-                   eventDate.getFullYear() === (year ?? currentDate.getFullYear());
-          });
-          set({ events: filteredEvents, isLoading: false });
-        } else {
-          set({ events: storedEvents, isLoading: false });
-        }
-      }
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      const response = await fetch('/api/events');
+      const data = await response.json();
+      setEvents(data);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
     }
-  },
-  createEvent: async (event) => {
+  }, []);
+
+  const joinEvent = useCallback(async (eventId: string, userId: string) => {
     try {
-      set({ isLoading: true, error: null });
-      try {
-        await axios.post('/events', event);
-        await get().fetchEvents();
-      } catch (apiError) {
-        console.log('Storing event locally:', apiError);
-        const newEvent: CalendarEvent = {
-          ...event as CalendarEvent,
-          id: String(Date.now()),
-          comments: [],
-          isJoined: false,
-          attendees: 0
-        };
-        set(state => ({ 
-          events: [...state.events, newEvent],
-          isLoading: false
-        }));
-      }
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
+      await fetch(`/api/events/${eventId}/join`, {
+        method: 'POST',
+        body: JSON.stringify({ userId })
+      });
+      setEvents(prevEvents => 
+        prevEvents.map(event =>
+          event.id === eventId
+            ? { ...event, attendees: [...event.attendees, userId], isJoined: true }
+            : event
+        )
+      );
+    } catch (err) {
+      console.error('Failed to join event:', err);
     }
-  },
-  updateEvent: async (id, event) => {
+  }, []);
+
+  const leaveEvent = useCallback(async (eventId: string, userId: string) => {
     try {
-      set({ isLoading: true, error: null });
-      try {
-        await axios.put(`/events/${id}`, event);
-        await get().fetchEvents();
-      } catch (apiError) {
-        console.log('Updating event locally:', apiError);
-        set(state => ({
-          events: state.events.map(e => e.id === id ? { ...e, ...event } : e),
-          isLoading: false
-        }));
-      }
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
+      await fetch(`/api/events/${eventId}/leave`, {
+        method: 'POST',
+        body: JSON.stringify({ userId })
+      });
+      setEvents(prevEvents =>
+        prevEvents.map(event =>
+          event.id === eventId
+            ? { ...event, attendees: event.attendees.filter(id => id !== userId), isJoined: false }
+            : event
+        )
+      );
+    } catch (err) {
+      console.error('Failed to leave event:', err);
     }
-  },
-  deleteEvent: async (id) => {
+  }, []);
+
+  const addComment = useCallback(async (eventId: string, comment: { userId: string; text: string }) => {
     try {
-      set({ isLoading: true, error: null });
-      try {
-        await axios.delete(`/events/${id}`);
-        await get().fetchEvents();
-      } catch (apiError) {
-        console.log('Deleting event locally:', apiError);
-        set(state => ({
-          events: state.events.filter(e => e.id !== id),
-          isLoading: false
-        }));
-      }
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
+      await fetch(`/api/events/${eventId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify(comment)
+      });
+      setEvents(prevEvents =>
+        prevEvents.map(event =>
+          event.id === eventId
+            ? { ...event, comments: [...(event.comments || []), comment] }
+            : event
+        )
+      );
+    } catch (err) {
+      console.error('Failed to add comment:', err);
     }
-  },
-  setSelectedDate: (date) => set({ selectedDate: date }),
-  setViewMode: (mode) => set({ viewMode: mode }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setSidebarSearchQuery: (query) => set({ sidebarSearchQuery: query }),
-  setSelectedCategory: (category) => set({ selectedCategory: category })
-}));
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  return {
+    events,
+    loading,
+    error,
+    fetchEvents,
+    joinEvent,
+    leaveEvent,
+    addComment
+  };
+}; 
