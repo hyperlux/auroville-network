@@ -1,4 +1,5 @@
 import { Clock, MapPin, Tag, Users, Edit } from 'lucide-react';
+import { format } from 'date-fns';
 // ... existing code ...
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -21,4 +22,5 @@ import { Clock, MapPin, Tag, Users, Edit } from 'lucide-react';
                   </span>
                 )}
               </div>
+            </div>
 // ... existing code ... 

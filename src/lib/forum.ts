@@ -35,7 +35,7 @@ interface ForumState {
   editPost: (id: string, data: Partial<ForumPost>) => Promise<void>;
   deletePost: (id: string) => Promise<void>;
   pinPost: (id: string) => Promise<void>;
-}}
+}
 type SortOption = 'latest' | 'mostViewed' | 'mostCommented';
 export const useForumStore = create<ForumState>((set, get) => ({
   posts: [],
