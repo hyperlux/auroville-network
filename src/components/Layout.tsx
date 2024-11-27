@@ -1,13 +1,14 @@
 import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Search, Calendar, ShoppingBag, Vote } from 'lucide-react';
+import { Search, Calendar, ShoppingBag, MessageSquare, Vote } from 'lucide-react';
 import { useTheme } from '../lib/theme';
 import { useSearch } from '../lib/search';
 
-const typeIcons = {
+const icons = {
   event: Calendar,
   bazaar: ShoppingBag,
+  forum: MessageSquare,
   decision: Vote
 };
 
@@ -60,7 +61,7 @@ export default function Layout() {
                   ) : (
                     <div className="divide-y dark:divide-dark">
                       {results.map((result) => {
-                        const Icon = typeIcons[result.type];
+                        const Icon = icons[result.type];
                         return (
                           <button
                             key={result.id}

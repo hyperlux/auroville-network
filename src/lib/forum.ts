@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import axios from './axios';
 
+type ErrorState = string | null;
+
 export interface ForumPost {
   id: string;
   title: string;
@@ -21,8 +23,7 @@ interface ForumState {
   posts: ForumPost[];
   categories: string[];
   isLoading: boolean;
-
-  error: ErrorState | null;
+  error: ErrorState;
   selectedCategory: string;
   currentPage: number;
   postsPerPage: number;
@@ -36,15 +37,21 @@ interface ForumState {
   deletePost: (id: string) => Promise<void>;
   pinPost: (id: string) => Promise<void>;
 }
+
 type SortOption = 'latest' | 'mostViewed' | 'mostCommented';
+
 export const useForumStore = create<ForumState>((set, get) => ({
   posts: [],
   categories: ['General', 'Announcements', 'Events', 'Projects', 'Questions', 'Ideas'],
   isLoading: false,
   error: null,
   selectedCategory: 'All',
+  currentPage: 1,
+  postsPerPage: 10,
+  totalPosts: 0,
+  sortBy: 'latest',
 
-  fetchPosts: async () => {
+  fetchPosts: async (page: number) => {
     try {
       set({ isLoading: true, error: null });
       const { selectedCategory } = get();
@@ -78,7 +85,7 @@ export const useForumStore = create<ForumState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       await axios.post('/api/forums/posts', data);
-      await get().fetchPosts();
+      await get().fetchPosts(1);
     } catch (error: any) {
       console.error('Error creating post:', error);
       set({ 
@@ -90,7 +97,51 @@ export const useForumStore = create<ForumState>((set, get) => ({
 
   setSelectedCategory: (category) => {
     set({ selectedCategory: category });
-    get().fetchPosts();
+    get().fetchPosts(1);
+  },
+
+  setSortOption: (option: SortOption) => {
+    set({ sortBy: option });
+    get().fetchPosts(1);
+  },
+
+  editPost: async (id: string, data: Partial<ForumPost>) => {
+    try {
+      set({ isLoading: true, error: null });
+      await axios.put(`/api/forums/posts/${id}`, data);
+      await get().fetchPosts(1);
+    } catch (error: any) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to edit post',
+        isLoading: false 
+      });
+    }
+  },
+
+  deletePost: async (id: string) => {
+    try {
+      set({ isLoading: true, error: null });
+      await axios.delete(`/api/forums/posts/${id}`);
+      await get().fetchPosts(1);
+    } catch (error: any) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to delete post',
+        isLoading: false 
+      });
+    }
+  },
+
+  pinPost: async (id: string) => {
+    try {
+      set({ isLoading: true, error: null });
+      await axios.put(`/api/forums/posts/${id}/pin`);
+      await get().fetchPosts(1);
+    } catch (error: any) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to pin post',
+        isLoading: false 
+      });
+    }
   }
 }));
 
@@ -99,8 +150,3 @@ interface PostAnalytics {
   uniqueViewers: string[];
   engagementRate: number;
 }
-
-// Add useEffect in your forum page component to trigger the fetch
-useEffect(() => {
-  forumStore.fetchPosts();
-}, []);
